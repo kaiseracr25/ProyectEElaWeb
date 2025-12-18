@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ campana.titulo }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+
+<div class="container py-5">
+    <a href="{% url 'index' %}" class="btn btn-outline-secondary mb-3">&larr; Volver al inicio</a>
+
+    <div class="row">
+        <div class="col-md-8">
+            {% if campana.imagen %}
+                <img src="{{ campana.imagen.url }}" class="img-fluid rounded mb-3 w-100 shadow-sm" style="max-height: 400px; object-fit: cover;">
+            {% endif %}
+            
+            <h1 class="display-5 fw-bold">{{ campana.titulo }}</h1>
+            
+            {% if user.is_superuser %}
+                <div class="mb-3">
+                    <a href="{% url 'editar_campana' campana.id %}" class="btn btn-sm btn-outline-primary">✏ Editar</a>
+                    <a href="{% url 'eliminar_campana' campana.id %}" class="btn btn-sm btn-outline-danger">🗑 Eliminar</a>
+                </div>
+            {% endif %}
+
+            <span class="badge bg-primary mb-3">{{ campana.categoria.nombre }}</span>
+            <hr>
+            <p class="lead">{{ campana.descripcion }}</p>
+            
+            <div class="mt-5">
+                <h4 class="mb-3">Donaciones Recientes</h4>
+                <div class="card shadow-sm">
+                    <ul class="list-group list-group-flush">
+                        {% for donacion in donaciones %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ donacion.usuario.username }}</strong>
+                                {% if donacion.comentario %}
+                                    <p class="mb-0 text-muted small">"{{ donacion.comentario }}"</p>
+                                {% endif %}
+                            </div>
+                            <span class="text-success fw-bold">${{ donacion.monto }}</span>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-muted text-center py-3">Aún no hay donaciones. ¡Sé el primero en apoyar!</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow sticky-top border-0" style="top: 20px;">
+                <div class="card-body p-4">
+                    <h3 class="card-title fw-bold">${{ total_recaudado }} <small class="text-muted h6">recaudados</small></h3>
+                    <p class="text-muted">de una meta de ${{ campana.monto_objetivo }}</p>
+
+                    <div class="progress mb-4" style="height: 25px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ porcentaje }}%;" 
+                             aria-valuenow="{{ porcentaje }}" aria-valuemin="0" aria-valuemax="100">
+                             {{ porcentaje|floatformat:0 }}%
+                        </div>
+                    </div>
+<hr>
+
+                    {% if user.is_authenticated %}
+                        
+                        {% if user.is_superuser %}
+                            <div class="alert alert-secondary text-center">
+                                <i class="bi bi-shield-lock-fill fs-4 d-block mb-2"></i>
+                                <strong>Modo Administrador</strong>
+                                <p class="mb-0 small">Los administradores no pueden realizar donaciones.</p>
+                            </div>
+                        
+                        {% else %}
+                            {% if campana.activa %}
+                                <h5 class="mb-3">¡Apoya esta campaña!</h5>
+                                
+                                <form method="post" id="donation-form" novalidate>
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Tu aporte ($)</label>
+                                        <input type="number" name="monto" step="0.01" class="form-control form-control-lg" placeholder="Ej: 50.00" required min="1" id="id_monto">
+                                        {% if form.monto.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.monto.errors %} {{ error }} {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Mensaje (opcional)</label>
+                                        {{ form.comentario }}
+                                    </div>
+                                    
+                                    <button type="button" class="btn btn-success w-100 btn-lg fw-bold" onclick="abrirModalPago()">
+                                        Donar Ahora
+                                    </button>
+                                </form>
+                            {% else %}
+                                <div class="alert alert-danger text-center">
+                                    Esta campaña ha finalizado. <br>Ya no se reciben donaciones.
+                                </div>
+                            {% endif %}
+                        {% endif %}
+
+                    {% else %}
+                        <div class="alert alert-warning text-center">
+                            <p class="mb-2">Debes iniciar sesión para donar.</p>
+                            <a href="/accounts/login/?next={{ request.path }}" class="btn btn-primary btn-sm w-100">Iniciar Sesión</a>
+                        </div>
+                    {% endif %}
+      
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title"><i class="bi bi-credit-card-fill me-2"></i>Pago Seguro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Ingresa los datos de tu tarjeta para completar la donación.</p>
+                
+                <div class="mb-3">
+                    <label class="form-label">Nombre en la tarjeta</label>
+                    <input type="text" id="cardName" class="form-control" placeholder="NOMBRE APELLIDO" autocomplete="off">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Número de tarjeta</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-credit-card"></i></span>
+                        <input type="text" id="cardNumber" class="form-control" placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric" autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-6">
+                        <label class="form-label">Vencimiento</label>
+                        <input type="text" id="cardExpiry" class="form-control" placeholder="MM/AA" maxlength="5" inputmode="numeric" autocomplete="off">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">CVV</label>
+                        <input type="password" id="cardCvv" class="form-control" placeholder="123" maxlength="4" inputmode="numeric" autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-3 small d-flex align-items-center">
+                    <i class="bi bi-info-circle-fill me-2 fs-4"></i>
+                    <div>Esta es una simulación. Los datos no son reales ni se almacenan.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" form="donation-form" class="btn btn-success fw-bold">Confirmar Pago</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // 1. Lógica para abrir el modal y limpiar campos
+    function abrirModalPago() {
+        var form = document.getElementById('donation-form');
+        
+        if (form.checkValidity()) {
+            // Limpiamos los campos del modal antes de mostrarlo
+            document.getElementById('cardName').value = '';
+            document.getElementById('cardNumber').value = '';
+            document.getElementById('cardExpiry').value = '';
+            document.getElementById('cardCvv').value = '';
+
+            var myModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+            myModal.show();
+        } else {
+            form.reportValidity();
+        }
+    }
+
+    // 2. Lógica de validación en tiempo real (Input Masking)
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- NÚMERO DE TARJETA ---
+        const cardNumber = document.getElementById('cardNumber');
+        cardNumber.addEventListener('input', function (e) {
+            // Elimina todo lo que NO sea número
+            let value = e.target.value.replace(/\D/g, '');
+            // Agrega un espacio cada 4 dígitos
+            value = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+            e.target.value = value;
+        });
+
+        // --- FECHA (MM/AA) ---
+        const cardExpiry = document.getElementById('cardExpiry');
+        cardExpiry.addEventListener('input', function (e) {
+            // Elimina no números
+            let value = e.target.value.replace(/\D/g, '');
+            const currentYY = new Date().getFullYear() % 100;
+            const currentMM = new Date().getMonth() + 1
+
+            // mes
+            if (value.length >= 2) {
+                let month = value.substring(0, 2);
+                if (parseInt(month, 10) > 12) {
+                 month = "12";
+                } else if (parseInt(month, 10) === 0) {
+                    month = "01";
+                }
+                value = month + (value.length > 2 ? "/" + value.substring(2, 4) : "");
+            }
+
+            let year = value.slice(3, 5); // "AA"
+            const yy = parseInt(year || "0", 10);
+            const mm = parseInt(value.slice(0, 2) || "0", 10);
+            
+            //validador Año
+            if (yy < currentYY && year.length === 2 ) {
+                year = String(currentYY).padStart(2, "0"); // "25"
+            } 
+            
+            //mes y año actual
+            const month = value.slice(0, 2);
+            value = month + (value.length > 2 ? "/" + year : "");
+
+            if (yy === currentYY && mm < currentMM ) {
+               cardExpiry.setCustomValidity(
+                "La fecha no puede ser anterior al mes actual"
+            );
+            cardExpiry.reportValidity();
+            value="";
+            } else {
+            cardExpiry.setCustomValidity("");
+            }
+
+            e.target.value = value;
+        });
+
+        // --- CVV ---
+        const cardCvv = document.getElementById('cardCvv');
+        cardCvv.addEventListener('input', function (e) {
+            // Solo permite números
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+
+        // --- NOMBRE ---
+        const cardName = document.getElementById('cardName');
+        cardName.addEventListener('input', function (e) {
+            // Convierte a mayúsculas automáticamente
+            e.target.value = e.target.value.toUpperCase();
+            
+        });
+    });
+</script>
+
+</body>
+</html>

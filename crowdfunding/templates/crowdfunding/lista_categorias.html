@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestionar Categorías</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gestión de Categorías</h2>
+        <div>
+            <a href="{% url 'crear_categoria' %}" class="btn btn-success">+ Nueva Categoría</a>
+            <a href="{% url 'index' %}" class="btn btn-outline-secondary">Volver al Inicio</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in categorias %}
+                    <tr>
+                        <td class="fw-bold">{{ cat.nombre }}</td>
+                        <td>{{ cat.descripcion }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'editar_categoria' cat.id %}" class="btn btn-sm btn-primary">Editar</a>
+                            <a href="{% url 'eliminar_categoria' cat.id %}" class="btn btn-sm btn-danger">Eliminar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>

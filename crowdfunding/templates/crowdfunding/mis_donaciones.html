@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mis Donaciones</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'index' %}">🚀 Proyecto Crowdfunding - EELA </a>
+        <a href="{% url 'index' %}" class="btn btn-outline-light btn-sm">Volver al Inicio</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Historial de Donaciones</h2>
+            <p class="text-muted">Gracias por apoyar estas iniciativas.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Aportado</h5>
+                    <h2 class="display-6">${{ total_donado }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Campaña</th>
+                        <th>Comentario</th>
+                        <th class="text-end">Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for donacion in donaciones %}
+                    <tr>
+                        <td>{{ donacion.created_at|date:"d M Y" }}</td>
+                        <td>
+                            <a href="{% url 'detalle_campana' donacion.campanha.id %}" class="text-decoration-none fw-bold">
+                                {{ donacion.campanha.titulo }}
+                            </a>
+                        </td>
+                        <td class="text-muted">
+                            {% if donacion.comentario %}
+                                {{ donacion.comentario|truncatechars:50 }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold text-success">${{ donacion.monto }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-4">
+                            Aún no has realizado donaciones. 
+                            <a href="{% url 'index' %}">¡Explora campañas aquí!</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
